@@ -1,9 +1,9 @@
 
 
 
-var router = require("./module/router")({
-	statics: "statics",
-    port: 80
+var router = require("./module/router")({    
+    port: 80,
+    ext: []
 })
 
 var render = require("./module/render")({
@@ -14,32 +14,19 @@ var render = require("./module/render")({
 
 
 router.get("/", function () {
-
     this.body = "123"
-
 })
-
 
 router.post("/test", function () {
     this.body = "post"  
 })
 
 router.get("/test", function () {
-
-	this.body = "test"
-	
-	/*
-	this.body = render("index", {
-		text: "test"
-	})
-	*/
-	
+    
+    this.body = render("index", {
+        text: "test"
+    })
+    
 })
-
-
-
-
-
-
 
 

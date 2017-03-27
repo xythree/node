@@ -30,10 +30,10 @@ module.exports = function (config) {
     var config = config || {}
 
     function render(fileName, data) {
-        var views = path.join(__dirname, (config.views || "") + "/")
+        var views = path.join("./", (config.views || "") + "/")     
         var result = fs.readFileSync(views + fileName + "." + config.ext)
         var html = result.toString()
-		
+        
         return data ? templateEngine(html, data) : html
     }
 

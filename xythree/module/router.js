@@ -8,9 +8,15 @@ var querystring = require("querystring")
 
 
 module.exports = function (config) {
-
+    
     var temp = []
-    var timer
+    var timer, extList
+    
+    if (Array.isArray(config.ext)) {
+        extList = [".js", ".png", ".gif", ".jpg", ".css", ".swf", ".xml", ".html"].concat(config.ext)
+    } else if (config.ext.replace) {
+        extList = config.ext.extList
+    }
 
     function createServer() {
 
@@ -18,56 +24,23 @@ module.exports = function (config) {
 
         timer = setTimeout(function () {
             http.createServer((request, response) => {
-				var u = url.parse(request.url)
-                var method = request.method.toUpperCase()
-				
-				response.writeHead(200, {"Content-Type": "text/html"})
-				
-				var promise = new Promise((resolve, reject) => {
-					
-					for(var i = 0, len = temp.length; i < len; i++) {
-						var t = temp[i]
-						
-						if (t.url == u.pathname) {
+                var u = url.parse(request.url)
+                var method = request.method.toLowerCase()
 
-							if (t.method == "get") {
-								t.parame = querystring.parse(u.query)
-								resolve(t)
-								break
-							} else if (t.method == "post") {
-								var body = []
+                var promise = new Promise((resolve, reject) => {
 
-								request.on("data", chunk => {
-									body.push(chunk)
-								})
+                    for(var i = 0, len = temp.length; i < len; i++) {
 
-								request.on("end", () => {
-									t.parame = querystring.parse(body.toString())
-									resolve(t)
-								})
-							}
-						}
-					}
-				})
-				
-				promise.then( t => {
-					t.callback && t.callback()
-					response.end(t.body || "")
-				})
-				
-				return ;
-				
-                temp.forEach(function (t) {                    
+                        response.writeHead(200, {"Content-Type": "text/html"})
 
-                    console.log(u.pathname, t.url)
-                    if (u.pathname == t.url) {
-						response.writeHead(200, {"Content-Type": "text/html"})
-                        var promise = new Promise((resolve, reject) => {
+                        var t = temp[i]
 
-                            if (method == "get") {
+                        if (t.url == u.pathname) {
+
+                            if (t.method == "get") {
                                 t.parame = querystring.parse(u.query)
-                                resolve()
-                            } else if (method == "post") {                              
+                                resolve(t)                                
+                            } else if (t.method == "post") {
                                 var body = []
 
                                 request.on("data", chunk => {
@@ -75,37 +48,40 @@ module.exports = function (config) {
                                 })
 
                                 request.on("end", () => {
-                                    t.parame = querystring.parse(body.toString())                                   
-                                    resolve()
+                                    t.parame = querystring.parse(body.toString())
+                                    resolve(t)
                                 })
                             }
-                        })
-                        
-                        promise.then(() => {
-                            t.callback && t.callback()							
-							response.end(t.body || "")							
-                        })
-						
-                    } else {
 
-						if (config.statics) {
+                            if (t.method == method) break
 
-							try {
-								var newFileUrl = u.pathname.replace(config.statics, "")
-								var fileUrl = path.join(__dirname, newFileUrl)								
-								var file = fs.readFileSync(fileUrl)
+                        } else {
+                            
+                            if (extList.indexOf(path.extname(u.pathname)) != -1) {
 
-								response.writeHead(200, {"Content-Type": "text/plain"})
-								response.end(file.toString())							
-							} catch (e) {
+                                fs.readFile(path.join("./", u.pathname), (err, data) => {
+                                    var statusCode = 200, data = data
 
-								response.writeHead(404, {"Content-Type": "text/plain"})
-								response.end("404")
-							}
-						}
-					}           
+                                    if (err) {
+                                        statusCode = 404
+                                        data = "404"
+                                    }
+
+                                    response.writeHead(statusCode, {"Content-Type": "text/plain"})
+                                    response.end(data)
+                                })
+                            }
+                            
+                        }
+                    }
                 })
-            }).listen(config.port || 80)           
+
+                promise.then(function (t) {                 
+                    t.callback && t.callback()
+                    response.end(t.body || "")
+                })
+
+            }).listen(config.port || 80)
         }, 0)
     }
 
@@ -116,11 +92,11 @@ module.exports = function (config) {
 
     return {
         post: (url, callback) => {
-			publicFn(url, callback, "post")
-		},
+            publicFn(url, callback, "post")
+        },
         get: (url, callback) => {
-			publicFn(url, callback, "get")
-		}
+            publicFn(url, callback, "get")
+        }
     }
 
 }
