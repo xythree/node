@@ -35,6 +35,11 @@ module.exports = function (config) {
 
                         var t = temp[i]
 
+                        t.redirect = url => {
+                            response.writeHead(302, { "Location": url })
+                            response.end()
+                        }
+
                         if (t.url == u.pathname) {
 
                             if (t.method == "get") {
@@ -56,15 +61,16 @@ module.exports = function (config) {
                             if (t.method == method) break
 
                         } else {
-                            
+
                             if (extList.indexOf(path.extname(u.pathname)) != -1) {
 
                                 fs.readFile(path.join("./", u.pathname), (err, data) => {
                                     var statusCode = 200, data = data
 
                                     if (err) {
-                                        statusCode = 404
-                                        data = "404"
+                                        //statusCode = 404
+                                        //data = "404"
+                                        t.redirect("/404")
                                     }
 
                                     response.writeHead(statusCode, {"Content-Type": "text/plain"})
@@ -76,7 +82,7 @@ module.exports = function (config) {
                     }
                 })
 
-                promise.then(function (t) {                 
+                promise.then(t => {                 
                     t.callback && t.callback()
                     response.end(t.body || "")
                 })

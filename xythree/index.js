@@ -13,11 +13,11 @@ var render = require("./module/render")({
 
 
 
-router.get("/", function () {
+router.get("/", function () {	
     this.body = "123"
 })
 
-router.post("/test", function () {
+router.post("/test", function () {	
     this.body = "post"  
 })
 
@@ -28,5 +28,10 @@ router.get("/test", function () {
     })
     
 })
+
+router.get("/404", function () {
+	this.body = render("404")
+})
+
 
 
