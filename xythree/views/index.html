@@ -9,6 +9,11 @@
 
     <% this.text %>
     
+	<form action="/uploads" method="post" enctype="multipart/form-data" >
+		<input type="file" name="file" />
+		<input type="submit" value="submit" />
+	</form>
+	
 
 <script src="/static/js/jquery-1.7.1.js" ></script>
 
@@ -20,13 +25,12 @@
         name: "xythree",
         phone: 123456
     };
-    
+
     $.post("/test", d, function (data) {
-    
-        console.log(data)
-        
+        console.log(data);
     });
-    
+
+	
 
 </script>
 

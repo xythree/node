@@ -5,17 +5,17 @@ var url = require("url")
 var fs = require("fs")
 var path = require("path")
 var querystring = require("querystring")
-
+var formidable = require("formidable")
 
 module.exports = function (config) {
-    
+
     var temp = []
     var timer, extList
-    
+
     if (Array.isArray(config.ext)) {
         extList = [".js", ".png", ".gif", ".jpg", ".css", ".swf", ".xml", ".html"].concat(config.ext)
     } else if (config.ext.replace) {
-        extList = config.ext.extList
+        extList = config.ext.ext
     }
 
     function createServer() {
@@ -44,20 +44,52 @@ module.exports = function (config) {
 
                             if (t.method == "get") {
                                 t.parame = querystring.parse(u.query)
-                                resolve(t)                                
+                                resolve(t)
                             } else if (t.method == "post") {
-                                var body = []
+                                if (t.uploads && t.uploads.files) {
+                                    var form = new formidable.IncomingForm()
 
-                                request.on("data", chunk => {
-                                    body.push(chunk)
-                                })
+                                    Object.assign(form, t.uploads)
 
-                                request.on("end", () => {
-                                    t.parame = querystring.parse(body.toString())
-                                    resolve(t)
-                                })
+                                    form.parse(request, function (err, fields, files) {
+                                        if (err) {
+                                            console.log("uploads err", err)
+                                        }
+
+                                        var filename = files.file.name
+                                        var nameArray = filename.split(".")
+                                        var type = nameArray.pop()
+                                        var name = ""
+
+                                        nameArray.push("_" + Date.now())
+                                        name = nameArray.reduce(function (c, n) {
+                                            return c + n
+                                        })
+
+                                        var rand = Math.random() * 100 + 900
+                                        var num = parseInt(rand, 10)
+                                        var avatarName = name + num + "." + type
+                                        var newPath = form.uploadDir + avatarName
+
+                                        t.parame = files
+                                        fs.renameSync(files.file.path, newPath)
+                                        resolve(t)
+                                    })
+
+                                } else {
+                                    var body = []
+
+                                    request.on("data", chunk => {
+                                        body.push(chunk)
+                                    })
+
+                                    request.on("end", () => {                                       
+                                        t.parame = querystring.parse(body.toString())
+                                        resolve(t)
+                                    })
+                                }
                             }
-
+							
                             if (t.method == method) break
 
                         } else {
@@ -76,13 +108,12 @@ module.exports = function (config) {
                                     response.writeHead(statusCode, {"Content-Type": "text/plain"})
                                     response.end(data)
                                 })
-                            }
-                            
+                            }                            
                         }
                     }
                 })
 
-                promise.then(t => {                 
+                promise.then(t => {
                     t.callback && t.callback()
                     response.end(t.body || "")
                 })
@@ -91,16 +122,34 @@ module.exports = function (config) {
         }, 0)
     }
 
-    function publicFn(url, callback, method) {
-        temp.push({url, callback, method})
+    function publicFn(url, uploads, callback, method) {
+        var args = arguments
+        var len = args.length
+
+        if (len == 3) {
+            if (typeof args[1] == "function") {             
+                temp.push({url, callback: args[1], method: args[2]})
+            } else {
+                temp.push({url, uploads: args[1], method: args[2]})
+            }
+        } else if (len == 4) {
+            temp.push({url, uploads, callback, method})
+        }
         createServer()
     }
 
     return {
-        post: (url, callback) => {
-            publicFn(url, callback, "post")
+        post: function (url, uploads, callback) {
+            var args = arguments
+            var len = args.length
+
+            if (len == 2) {
+                publicFn(url, args[1], "post")                
+            } else if (len == 3) {
+                publicFn(url, uploads, callback, "post")
+            }
         },
-        get: (url, callback) => {
+        get: function (url, callback) {
             publicFn(url, callback, "get")
         }
     }
