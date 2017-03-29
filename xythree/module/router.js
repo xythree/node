@@ -8,8 +8,9 @@ var querystring = require("querystring")
 var formidable = require("formidable")
 
 module.exports = function (config) {
-
+    var config = config || {}
     var temp = []
+    var specialRouter = config.specialRouter || []
     var timer, extList
 
     if (Array.isArray(config.ext)) {
@@ -40,8 +41,29 @@ module.exports = function (config) {
                             response.end()
                         }
 
-                        if (t.url == u.pathname) {
+                        function vagueRouter(t, pathname) {
+                            var reg = /^:\w+$/
+                            var arr1 = t.url.split("/"), arr2 = pathname.split("/")
+                            var rs1 = arr1.pop()
+                            var rs2 = arr2.pop()
+                            
+                            if (specialRouter.indexOf(rs2) == -1) {
 
+                                if (!path.extname(pathname) && arr1.length == arr2.length) {                                    
+                                    
+                                    if (arr1.join("/") == arr2.join("/")) {
+
+                                        if (reg.test(rs1)) {
+                                            t.vr = {}
+                                            return t.vr[rs1.replace(":", "")] = rs2
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (t.url == u.pathname || vagueRouter(t, u.pathname)) {
+                            
                             if (t.method == "get") {
                                 t.parame = querystring.parse(u.query)
                                 resolve(t)
@@ -89,26 +111,23 @@ module.exports = function (config) {
                                     })
                                 }
                             }
-							
+                            
                             if (t.method == method) break
 
-                        } else {
+                        } else if (extList.indexOf(path.extname(u.pathname)) != -1) {
 
-                            if (extList.indexOf(path.extname(u.pathname)) != -1) {
+                            fs.readFile(path.join("./", u.pathname), (err, data) => {
+                                var statusCode = 200, data = data
 
-                                fs.readFile(path.join("./", u.pathname), (err, data) => {
-                                    var statusCode = 200, data = data
+                                if (err) {
+                                    //statusCode = 404
+                                    //data = "404"
+                                    reject(t, "error")
+                                }
 
-                                    if (err) {
-                                        //statusCode = 404
-                                        //data = "404"
-                                        t.redirect("/404")
-                                    }
-
-                                    response.writeHead(statusCode, {"Content-Type": "text/plain"})
-                                    response.end(data)
-                                })
-                            }                            
+                                response.writeHead(statusCode, {"Content-Type": "text/plain"})
+                                response.end(data)
+                            })
                         }
                     }
                 })
@@ -116,6 +135,9 @@ module.exports = function (config) {
                 promise.then(t => {
                     t.callback && t.callback()
                     response.end(t.body || "")
+                }, (t, error) => {
+                    response.writeHead(404, {"Content-Type": "text/plain"})
+                    response.end()
                 })
 
             }).listen(config.port || 80)
