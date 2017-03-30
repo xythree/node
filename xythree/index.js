@@ -1,9 +1,15 @@
 
 
 
-var router = require("./module/router")({    
+var router = require("./module/router")({
     port: 8081,
-    specialRouter: ["404"],
+    /*
+    specialRouter: {
+        replace: true,
+        specialRouter: []
+    },
+    */
+    specialRouter: [],
     /*
     ext: {
         replace: true,
@@ -18,23 +24,23 @@ var render = require("./module/render")({
     ext: "html"
 })
 
-
-
-router.get("/", function () {
+router.get("/", function () {   
     this.body = "/"
 })
 
-router.get("/:id", function () {    
+router.get("/router/:id", function () {
     this.body = this.vr.id
 })
 
 router.post("/test", function () {
-    this.body = "post"
+    this.body = JSON.stringify(this.parame)
 })
 
 router.get("/test", function () {
 
-    this.body = render("index")
+    this.body = render("index", {
+        text: 123
+    })
 
 })
 
@@ -45,9 +51,28 @@ router.get("/404", function () {
 router.post("/uploads", {
     files: "file",
     uploadDir: "uploads/"
-}, function () {
-    this.body = "success"
+}, function () {	
+	var result = {
+		status: 0,
+		file: this.file
+	}
+	
+    this.body = JSON.stringify(result)
 })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

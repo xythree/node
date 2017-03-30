@@ -9,14 +9,18 @@ var formidable = require("formidable")
 
 module.exports = function (config) {
     var config = config || {}
-    var temp = []
-    var specialRouter = config.specialRouter || []
-    var timer, extList
+    var temp = []    
+    var timer, extList, specialRouter
 
     if (Array.isArray(config.ext)) {
         extList = [".js", ".png", ".gif", ".jpg", ".css", ".swf", ".xml", ".html"].concat(config.ext)
     } else if (config.ext.replace) {
         extList = config.ext.ext
+    }
+    if (Array.isArray(config.specialRouter)) {
+        specialRouter = ["404"].concat(config.specialRouter)
+    } else if (config.specialRouter.replace) {
+        specialRouter = config.specialRouter.specialRouter
     }
 
     function createServer() {
@@ -27,7 +31,7 @@ module.exports = function (config) {
             http.createServer((request, response) => {
                 var u = url.parse(request.url)
                 var method = request.method.toLowerCase()
-
+                var flag = false
                 var promise = new Promise((resolve, reject) => {
 
                     for(var i = 0, len = temp.length; i < len; i++) {
@@ -46,7 +50,7 @@ module.exports = function (config) {
                             var arr1 = t.url.split("/"), arr2 = pathname.split("/")
                             var rs1 = arr1.pop()
                             var rs2 = arr2.pop()
-                            
+
                             if (specialRouter.indexOf(rs2) == -1) {
 
                                 if (!path.extname(pathname) && arr1.length == arr2.length) {                                    
@@ -61,13 +65,15 @@ module.exports = function (config) {
                                 }
                             }
                         }
-                        
+
                         if (t.url == u.pathname || vagueRouter(t, u.pathname)) {
-                            
+
                             if (t.method == "get") {
+                                flag = true
                                 t.parame = querystring.parse(u.query)
                                 resolve(t)
                             } else if (t.method == "post") {
+                                flag = true
                                 if (t.uploads && t.uploads.files) {
                                     var form = new formidable.IncomingForm()
 
@@ -77,7 +83,7 @@ module.exports = function (config) {
                                         if (err) {
                                             console.log("uploads err", err)
                                         }
-
+                                        
                                         var filename = files.file.name
                                         var nameArray = filename.split(".")
                                         var type = nameArray.pop()
@@ -94,10 +100,12 @@ module.exports = function (config) {
                                         var newPath = form.uploadDir + avatarName
 
                                         t.parame = files
+                                        t.file = {
+                                            url: newPath
+                                        }                                        
                                         fs.renameSync(files.file.path, newPath)
                                         resolve(t)
                                     })
-
                                 } else {
                                     var body = []
 
@@ -111,33 +119,40 @@ module.exports = function (config) {
                                     })
                                 }
                             }
-                            
+
                             if (t.method == method) break
 
                         } else if (extList.indexOf(path.extname(u.pathname)) != -1) {
-
+                            flag = true
                             fs.readFile(path.join("./", u.pathname), (err, data) => {
                                 var statusCode = 200, data = data
 
                                 if (err) {
                                     //statusCode = 404
                                     //data = "404"
-                                    reject(t, "error")
+                                    reject(t)
                                 }
 
                                 response.writeHead(statusCode, {"Content-Type": "text/plain"})
                                 response.end(data)
                             })
+                        } else {
+                            flag = false
                         }
                     }
+                    if (!flag) reject(t)
                 })
 
                 promise.then(t => {
                     t.callback && t.callback()
                     response.end(t.body || "")
-                }, (t, error) => {
-                    response.writeHead(404, {"Content-Type": "text/plain"})
-                    response.end()
+                }, t => {
+                    if (temp.map(t => (t.url == "/404"))) {
+                        t.redirect("/404")
+                    } else {
+                        response.writeHead(404, {"Content-Type": "text/plain"})
+                        response.end("404")
+                    }
                 })
 
             }).listen(config.port || 80)

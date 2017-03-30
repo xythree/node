@@ -7,29 +7,81 @@
 <body>
     
 
-    <% this.text %>
+    <%= text %>
     
-	<form action="/uploads" method="post" enctype="multipart/form-data" >
-		<input type="file" name="file" />
-		<input type="submit" value="submit" />
-	</form>
-	
+    <form action="/uploads" method="post" enctype="multipart/form-data" id="myform" >
+        <input type="file" name="file" />
+        <input type="submit" value="submit" />
+        <a href="javascript:;" id="submit" >submit</a>
+    </form>
+    
+    <div id="app">
+        <img :src="src" />
+    </div>
 
 <script src="/static/js/jquery-1.7.1.js" ></script>
 
 <script type="text/javascript" src="/static/js/vue.min.js"></script>
 
 <script type="text/javascript">
+    var vm = new Vue({
+        el: "#app",
+        data: {
+            src: ""
+        }
+    })
+    
+    function ajax(obj) {
+        var xhr = new XMLHttpRequest()
+        var type = obj.type.toLowerCase()
+        var data = null
 
-    var d = {
-        name: "xythree",
-        phone: 123456
-    };
+        xhr.open(obj.type, obj.url, true)
+        if (type == "post" && !obj.file) {
+            xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded")            
+        }
+        if (obj.data) {
+            if (obj.file) {
+                data = obj.data
+            } else if (Object.prototype.toString.call(obj.data) == "[object Object]") {
+                data = []
+                for(var i in obj.data) {
+                    data.push(i + "=" +obj.data[i])
+                }
+                data = data.join("&")
+            }
+        }
+        xhr.send(data)
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4) {
+                var status = xhr.status
+                if (status >= 200 && status < 300 || status == 304) {
+                    var result = xhr.responseText
+                    if (obj.dataType == "json") {
+                        result = JSON.parse(result)
+                    }
+                    obj.success && obj.success(result)
+                }
+            }
+        }
+    }
+    
+    $("#submit").on("click", function (e) {
 
-    $.post("/test", d, function (data) {
-        console.log(data);
-    });
+        var form = document.getElementById("myform")
+        var formdata = new FormData(form)
 
+        ajax({
+            url: "/uploads",
+            type: "post",
+            file: true,
+            dataType: "json",
+            data: formdata,
+            success: function (data) {
+                vm.src = data.file.url
+            }
+        })
+    })
 
 
 </script>
