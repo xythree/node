@@ -31,15 +31,79 @@ module.exports = function (config) {
             http.createServer((request, response) => {
                 var u = url.parse(request.url)
                 var method = request.method.toLowerCase()
-                var flag = false
+                var flag = false, statusCode = 200
+                var writeObj = {
+                    "Content-Type": "text/html"
+                }
+                var cookies = {}
+
+                if (request.headers.cookie) {
+                    request.headers.cookie.split(";").forEach(ck => {
+                        var ck_temp = ck.split("=")
+                        cookies[ck_temp[0].trim()] = (ck_temp[1] || "").trim()
+                    })
+                }
+                
+                cookies.get = function (key) {
+                    return cookies[key]
+                }
+
+                cookies.set = function (key, value) {
+                    var setVal = "", args = key
+                    
+                    if (Object.prototype.toString.call(args) == "[object Object]")  {
+                        var ckStr = ""
+                        
+                        if (Array.isArray(args.key)) {
+                            if (Array.isArray(args.value)) {
+                                args.key.forEach(function (t, i) {
+                                    ckStr += t + "=" +args.value[i] + "; "
+                                })
+                            } else {
+                                args.key.forEach(function (t, i) {
+                                    ckStr += t + "=" +args.value + "; "
+                                })
+                            }
+                        } else {
+                            ckStr += args.key + "=" + args.value + "; "
+                        }
+                        if (args.expires) {
+                            var date = new Date()
+                            date.setTime(date.getTime() + args.expires)
+                            ckStr += "expires=" +date.toGMTString() + "; "
+                        }
+                        if (args.path) {
+                            ckStr += "path=" + args.path + "; "
+                        }
+                        if (args.maxAge || args["max-age"]) {                            
+                            ckStr += "max-age=" + (args.maxAge || args["max-age"]) + "; "
+                        }
+                        if (args.domain) {
+                            ckStr += "domain=" + args.domain + "; "
+                        }
+                        if (args.secure) {
+                            ckStr += "secure=" + args.secure + "; "
+                        }
+                        if (args.httponly || args.httpOnly) {
+                            ckStr += "httpOnly=" + (args.httponly || args.httpOnly) + "; "
+                        }
+                    } else {
+                        ckStr = [key, "=", value].join("")
+                        if (!value) {
+                            ckStr += "; max-age=-1; "
+                        }                       
+                    }
+                    writeObj["Set-Cookie"] = ckStr
+                }
+
                 var promise = new Promise((resolve, reject) => {
 
                     for(var i = 0, len = temp.length; i < len; i++) {
 
-                        response.writeHead(200, {"Content-Type": "text/html"})
-
                         var t = temp[i]
-
+                        
+                        t.cookies = cookies
+                        
                         t.redirect = url => {
                             response.writeHead(302, { "Location": url })
                             response.end()
@@ -54,7 +118,7 @@ module.exports = function (config) {
                             if (specialRouter.indexOf(rs2) == -1) {
 
                                 if (!path.extname(pathname) && arr1.length == arr2.length) {                                    
-                                    
+
                                     if (arr1.join("/") == arr2.join("/")) {
 
                                         if (reg.test(rs1)) {
@@ -125,7 +189,7 @@ module.exports = function (config) {
                         } else if (extList.indexOf(path.extname(u.pathname)) != -1) {
                             flag = true
                             fs.readFile(path.join("./", u.pathname), (err, data) => {
-                                var statusCode = 200, data = data
+                                var data = data
 
                                 if (err) {
                                     //statusCode = 404
@@ -133,7 +197,7 @@ module.exports = function (config) {
                                     reject(t)
                                 }
 
-                                response.writeHead(statusCode, {"Content-Type": "text/plain"})
+                                response.writeHead(200, {"Content-Type": "text/plain"})
                                 response.end(data)
                             })
                         } else {
@@ -145,6 +209,7 @@ module.exports = function (config) {
 
                 promise.then(t => {
                     t.callback && t.callback()
+                    response.writeHead(statusCode, writeObj)
                     response.end(t.body || "")
                 }, t => {
                     if (temp.map(t => (t.url == "/404"))) {

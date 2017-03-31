@@ -32,11 +32,17 @@ router.get("/router/:id", function () {
     this.body = this.vr.id
 })
 
-router.post("/test", function () {
+router.post("/test", function () {	
     this.body = JSON.stringify(this.parame)
 })
 
 router.get("/test", function () {
+	
+	
+	this.cookies.set({
+		key: "username",
+		value: "xythree"
+	})
 
     this.body = render("index", {
         text: 123
