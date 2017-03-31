@@ -30,8 +30,7 @@ module.exports = function (config) {
         timer = setTimeout(function () {
             http.createServer((request, response) => {
                 var u = url.parse(request.url)
-                var method = request.method.toLowerCase()
-                var flag = false, statusCode = 200
+                var method = request.method.toLowerCase()                
                 var writeObj = {
                     "Content-Type": "text/html"
                 }
@@ -91,15 +90,35 @@ module.exports = function (config) {
                         ckStr = [key, "=", value].join("")
                         if (!value) {
                             ckStr += "; max-age=-1; "
-                        }                       
+                        }
                     }
                     writeObj["Set-Cookie"] = ckStr
                 }
 
+                function vagueRouter(t, pathname) {
+                    var reg = /^:\w+$/
+                    var arr1 = t.url.split("/"), arr2 = pathname.split("/")
+                    var rs1 = arr1.pop()
+                    var rs2 = arr2.pop()
+
+                    if (specialRouter.indexOf(rs2) == -1) {
+
+                        if (!path.extname(pathname) && arr1.length == arr2.length) {                                    
+
+                            if (arr1.join("/") == arr2.join("/")) {
+
+                                if (reg.test(rs1)) {
+                                    t.vr = {}
+                                    return t.vr[rs1.replace(":", "")] = rs2
+                                }
+                            }
+                        }
+                    }
+                }
+
+                var statusCode = 200
                 var promise = new Promise((resolve, reject) => {
-
                     for(var i = 0, len = temp.length; i < len; i++) {
-
                         var t = temp[i]
                         
                         t.cookies = cookies
@@ -109,35 +128,13 @@ module.exports = function (config) {
                             response.end()
                         }
 
-                        function vagueRouter(t, pathname) {
-                            var reg = /^:\w+$/
-                            var arr1 = t.url.split("/"), arr2 = pathname.split("/")
-                            var rs1 = arr1.pop()
-                            var rs2 = arr2.pop()
-
-                            if (specialRouter.indexOf(rs2) == -1) {
-
-                                if (!path.extname(pathname) && arr1.length == arr2.length) {                                    
-
-                                    if (arr1.join("/") == arr2.join("/")) {
-
-                                        if (reg.test(rs1)) {
-                                            t.vr = {}
-                                            return t.vr[rs1.replace(":", "")] = rs2
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
                         if (t.url == u.pathname || vagueRouter(t, u.pathname)) {
 
-                            if (t.method == "get") {
-                                flag = true
+                            if (t.method == "get") {                                
                                 t.parame = querystring.parse(u.query)
-                                resolve(t)
+                                resolve(t)                              
                             } else if (t.method == "post") {
-                                flag = true
+                                
                                 if (t.uploads && t.uploads.files) {
                                     var form = new formidable.IncomingForm()
 
@@ -185,26 +182,21 @@ module.exports = function (config) {
                             }
 
                             if (t.method == method) break
-
-                        } else if (extList.indexOf(path.extname(u.pathname)) != -1) {
-                            flag = true
-                            fs.readFile(path.join("./", u.pathname), (err, data) => {
+                            
+                        } else if (extList.indexOf(path.extname(u.pathname)) != -1) {                            
+                            
+                            fs.readFile(path.join("./", config.staticDir, u.pathname), (err, data) => {
                                 var data = data
 
                                 if (err) {
-                                    //statusCode = 404
-                                    //data = "404"
                                     reject(t)
+                                    return
                                 }
-
                                 response.writeHead(200, {"Content-Type": "text/plain"})
                                 response.end(data)
                             })
-                        } else {
-                            flag = false
                         }
                     }
-                    if (!flag) reject(t)
                 })
 
                 promise.then(t => {
@@ -212,12 +204,8 @@ module.exports = function (config) {
                     response.writeHead(statusCode, writeObj)
                     response.end(t.body || "")
                 }, t => {
-                    if (temp.map(t => (t.url == "/404"))) {
-                        t.redirect("/404")
-                    } else {
-                        response.writeHead(404, {"Content-Type": "text/plain"})
-                        response.end("404")
-                    }
+                    response.writeHead(404, {"Content-Type": "text/plain"})                 
+                    response.end("404")
                 })
 
             }).listen(config.port || 80)
