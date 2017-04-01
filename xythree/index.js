@@ -20,51 +20,90 @@ var router = require("./module/router")({
     ext: []
 })
 
+var db = require("./module/db")
+var md5 = require("md5")
+
 var render = require("./module/render")({
     views: "views",
     ext: "html"
 })
 
-router.get("/", function () {   
-    this.body = "/"
+router.get("/", function (res) {
+    res.send("/")
 })
 
-router.get("/router/:id", function () {
-    this.body = this.vr.id
+router.get("/router/:id", function (res) {
+    res.send(this.vr.id)
 })
 
-router.post("/test", function () {  
-    this.body = JSON.stringify(this.parame)
-})
+router.post("/login", function (res) {
+    var parame = this.parame
+    var result = {
+        status: 0
+    }
 
-router.get("/test", function () {
+    if (parame.username && parame.password) {
     
-    
-    this.cookies.set({
-        key: "username",
-        value: "xythree"
-    })
+        db.getModel("Users").find({
+            name: parame.username,
+            password: md5(parame.password)
+        }, function (err, data) {
+            if (err) {
+                result.status = -1
+            }
+            if (data.length) {
+                var d = data[0]
 
-    this.body = render("index", {
-        text: 123
-    })
+                result.data = {
+                    username: d.name,
+                    birth: d.birth,
+                    email: d.email,
+                    phone: d.phone
+                }
+                this.cookies.set({
+                    key: "username",
+                    value: d.name
+                })
+            } else {
+                result.status = -1
+            }
+            res.send(result)
+        }.bind(this))
+
+    } else {
+        result.status = -1
+        res.send(result)
+    }
+})
+
+router.get("/login", function (res) {
+
+    db.getModel("Users").find(function (err, data) {       
+        var val = data[0].name      
+        var html = render("index", {
+            text: val
+        })
+
+        res.send(html)
+    }.bind(this))
+
 
 })
 
-router.get("/404", function () {
-    this.body = render("404")
+router.get("/404", function (res) {
+    res.send(render("404"))
 })
 
 router.post("/uploads", {
     files: "file",
-    uploadDir: "uploads/"
-}, function () {    
+    uploadDir: "static/uploads/"
+}, function (res) {
     var result = {
         status: 0,
         file: this.file
     }
-    
-    this.body = JSON.stringify(result)
+
+    res.send(result)
 })
 
 

@@ -8,7 +8,20 @@
     
 
     <%= text %>
-    
+	
+	<br />
+	<br />
+	
+	<div class="login_box">
+		<input type="text" class="username" value="demoabc1" />
+		<input type="password" class="password" value="aaaaaa" />
+		<a href="javascript:;" class="login">login</a>
+	</div>
+
+    <br />
+    <br />
+    <br />
+
     <form action="/uploads" method="post" enctype="multipart/form-data" id="myform" >
         <input type="file" name="file" />
         <input type="submit" value="submit" />
@@ -24,6 +37,29 @@
 <script type="text/javascript" src="/js/vue.min.js"></script>
 
 <script type="text/javascript">
+	
+	
+	$(".login").on("click", function () {
+		var username = $(".username").val()
+		var password = $(".password").val()
+		var d = {
+			username,
+			password
+		}
+		
+		$.ajax({
+			url: "/login",
+			type: "post",
+			data: d,
+			dataType: "json",
+			success: function (data) {
+				console.log(data)
+			}
+		})
+		
+	})
+	
+	
     var vm = new Vue({
         el: "#app",
         data: {

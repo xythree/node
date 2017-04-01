@@ -42,10 +42,10 @@ module.exports = function (config) {
                         cookies[ck_temp[0].trim()] = (ck_temp[1] || "").trim()
                     })
                 }
-                
+
                 cookies.get = function (key) {
                     return cookies[key]
-                }
+                }                
 
                 cookies.set = function (key, value) {
                     var setVal = "", args = key
@@ -91,7 +91,7 @@ module.exports = function (config) {
                         if (!value) {
                             ckStr += "; max-age=-1; "
                         }
-                    }
+                    }                   
                     writeObj["Set-Cookie"] = ckStr
                 }
 
@@ -160,11 +160,12 @@ module.exports = function (config) {
                                         var avatarName = name + num + "." + type
                                         var newPath = form.uploadDir + avatarName
 
+                                        fs.renameSync(files.file.path, newPath)
                                         t.parame = files
                                         t.file = {
-                                            url: newPath
-                                        }                                        
-                                        fs.renameSync(files.file.path, newPath)
+                                            url: newPath.replace(config.staticDir + "/", "")
+                                        } 
+                                        
                                         resolve(t)
                                     })
                                 } else {
@@ -183,8 +184,7 @@ module.exports = function (config) {
 
                             if (t.method == method) break
                             
-                        } else if (extList.indexOf(path.extname(u.pathname)) != -1) {                            
-                            
+                        } else if (extList.indexOf(path.extname(u.pathname)) != -1) {
                             fs.readFile(path.join("./", config.staticDir, u.pathname), (err, data) => {
                                 var data = data
 
@@ -200,14 +200,19 @@ module.exports = function (config) {
                 })
 
                 promise.then(t => {
-                    t.callback && t.callback()
-                    response.writeHead(statusCode, writeObj)
-                    response.end(t.body || "")
+                    response.send = function (str) {
+                        var str = str
+                        if (typeof str != "string") {
+                            str = JSON.stringify(str)
+                        }                       
+                        response.writeHead(statusCode, writeObj)
+                        response.end(str)
+                    }                   
+                    t.callback && t.callback(response)
                 }, t => {
-                    response.writeHead(404, {"Content-Type": "text/plain"})                 
+                    response.writeHead(404, {"Content-Type": "text/plain"})
                     response.end("404")
                 })
-
             }).listen(config.port || 80)
         }, 0)
     }
