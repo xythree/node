@@ -282,9 +282,6 @@ module.exports = function (conf) {
         },
         get: function (url, callback) {
             publicFn(url, callback, "get")
-        },
-        download: function (url, callback) {
-            publicFn(url, callback, "download")
         }
     }
 
