@@ -41,6 +41,8 @@ router.post("/login", function (res) {
     var result = {
         status: 0
     }
+    
+    
 
     if (parame.username && parame.password) {
     
@@ -66,7 +68,7 @@ router.post("/login", function (res) {
                 })
             } else {
                 result.status = -1
-            }
+            }           
             res.send(result)
         }.bind(this))
 
@@ -77,9 +79,9 @@ router.post("/login", function (res) {
 })
 
 router.get("/login", function (res) {
-
+    
     db.getModel("Users").find(function (err, data) {       
-        var val = data[0].name      
+        var val = data[0].name
         var html = render("index", {
             text: val
         })
@@ -87,11 +89,15 @@ router.get("/login", function (res) {
         res.send(html)
     }.bind(this))
 
-
 })
 
 router.get("/404", function (res) {
     res.send(render("404"))
+})
+
+//<a href="http://localhost:8081/download?url=images/load.gif" target="_blank">load</a>
+router.get("/download", function (res) {
+    res.download(this.parame.url)
 })
 
 router.post("/uploads", {

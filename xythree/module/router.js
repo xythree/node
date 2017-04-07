@@ -12,9 +12,9 @@ module.exports = function (conf) {
     var temp = []    
     var timer, extList, specialRouter
 
-    config.timeout = conf.timeout || 5000
+    config.timeout = conf.timeout || 8000
     if (Array.isArray(config.ext)) {
-        extList = [".js", ".png", ".gif", ".jpg", ".css", ".swf", ".xml", ".html"].concat(config.ext)
+        extList = [".js", ".png", ".gif", ".jpg", ".css", ".swf", ".xml", ".html", ".mp4", ".mp3"].concat(config.ext)
     } else if (config.ext.replace) {
         extList = config.ext.ext
     }
@@ -23,7 +23,11 @@ module.exports = function (conf) {
     } else if (config.specialRouter.replace) {
         specialRouter = config.specialRouter.specialRouter
     }
-
+    
+    function getStaticUrl(url) {
+        return path.join("./", config.staticDir, url)
+    }
+    
     function createServer() {
 
         clearTimeout(timer)
@@ -133,7 +137,7 @@ module.exports = function (conf) {
 
                             if (t.method == "get") {                                
                                 t.parame = querystring.parse(u.query)
-                                resolve(t)                              
+                                resolve(t)
                             } else if (t.method == "post") {
                                 
                                 if (t.uploads && t.uploads.files) {
@@ -184,9 +188,9 @@ module.exports = function (conf) {
                             }
 
                             if (t.method == method) break
-                            
+
                         } else if (extList.indexOf(path.extname(u.pathname)) != -1) {
-                            fs.readFile(path.join("./", config.staticDir, u.pathname), (err, data) => {
+                            fs.readFile(getStaticUrl(u.pathname), (err, data) => {
                                 var data = data
 
                                 if (err) {
@@ -199,7 +203,8 @@ module.exports = function (conf) {
                         }
                     }
 
-                    response.setTimeout(config.timeout, function () {
+                    //response.on("timeout", function () { //被动
+                    response.setTimeout(config.timeout, function () {  //主动
                         var _url = temp.filter(t => (t.url == "/404"))
                         if (_url.length) {
                             t.redirect("/404")
@@ -217,6 +222,27 @@ module.exports = function (conf) {
                         }
                         response.writeHead(statusCode, writeObj)
                         response.end(str)
+                    }
+                    response.download = function (_url) {
+                        var newUrl = url.parse(_url)
+                        var _u = getStaticUrl(newUrl.pathname)
+
+                        fs.stat(_u, function (err, stats) {
+
+                            if (err) {
+                                t.redirect("/404")
+                                return
+                            }
+                            if (stats.isFile()) {
+                                var _nu = _u.split("\\")
+                                response.writeHead(200, {
+                                    "Content-type": "application/octet-stream",
+                                    "Content-Disposition": "attachment; filename=" + _nu[_nu.length - 1],
+                                    "Content-Length": stats.size
+                                })
+                                fs.createReadStream(_u).pipe(response)
+                            }
+                        })
                     }
                     t.callback && t.callback(response)
                 }, t => {
@@ -256,6 +282,9 @@ module.exports = function (conf) {
         },
         get: function (url, callback) {
             publicFn(url, callback, "get")
+        },
+        download: function (url, callback) {
+            publicFn(url, callback, "download")
         }
     }
 
