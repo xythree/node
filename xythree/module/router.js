@@ -197,6 +197,15 @@ module.exports = function (config) {
                             })
                         }
                     }
+
+                    response.setTimeout(5000, function () {
+                        var _url = temp.filter(t => (t.url == "/404"))
+                        if (_url.length) {
+                            t.redirect("/404")
+                        } else {
+                            reject(t)
+                        }
+                    })
                 })
 
                 promise.then(t => {
@@ -204,10 +213,10 @@ module.exports = function (config) {
                         var str = str
                         if (typeof str != "string") {
                             str = JSON.stringify(str)
-                        }                       
+                        }
                         response.writeHead(statusCode, writeObj)
                         response.end(str)
-                    }                   
+                    }
                     t.callback && t.callback(response)
                 }, t => {
                     response.writeHead(404, {"Content-Type": "text/plain"})
