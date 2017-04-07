@@ -7,11 +7,12 @@ var path = require("path")
 var querystring = require("querystring")
 var formidable = require("formidable")
 
-module.exports = function (config) {
-    var config = config || {}
+module.exports = function (conf) {
+    var config = conf || {}
     var temp = []    
     var timer, extList, specialRouter
 
+    config.timeout = conf.timeout || 5000
     if (Array.isArray(config.ext)) {
         extList = [".js", ".png", ".gif", ".jpg", ".css", ".swf", ".xml", ".html"].concat(config.ext)
     } else if (config.ext.replace) {
@@ -198,7 +199,7 @@ module.exports = function (config) {
                         }
                     }
 
-                    response.setTimeout(5000, function () {
+                    response.setTimeout(config.timeout, function () {
                         var _url = temp.filter(t => (t.url == "/404"))
                         if (_url.length) {
                             t.redirect("/404")
